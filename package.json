@@ -1,0 +1,48 @@
+{
+  "name": "busta",
+  "version": "0.1.0",
+  "description": "시외버스 도착시간 비교 · CUVIC MVP",
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "next build",
+    "start": "next start --hostname 127.0.0.1",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "check": "npm run lint && npm run typecheck && npm test && npm run build",
+    "format": "prettier --write app features lib types data tests *.ts *.mjs *.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/djkdb/busta.git"
+  },
+  "keywords": [],
+  "author": "",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/djkdb/busta/issues"
+  },
+  "homepage": "https://github.com/djkdb/busta#readme",
+  "dependencies": {
+    "lucide-react": "^1.47.0",
+    "next": "^16.3.6",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.6.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.6",
+    "prettier": "^3.9.9",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.1"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}
