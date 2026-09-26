@@ -19,9 +19,10 @@
 └───────────────┬─────────────────────────────────────────────────────────────┘
                 │  Provider 인터페이스 (lib/data/types.ts)
 ┌───────────────▼──────────── lib/data ───────────────────────────────────────┐
-│ ScheduleDataProvider   : SampleScheduleDataProvider → (TAGO)                 │
+│ ScheduleDataProvider   : TagoScheduleDataProvider ✅ / Sample (키 없을 때)     │
 │ TravelTimeDataProvider : MockTravelTimeDataProvider → (Historical/TrafficApi)│
-│ HolidayCalendar        : StaticHolidayCalendar → (특일정보 API)               │
+│ HolidayCalendar        : KasiHolidayCalendar ✅ / Static (키 없을 때)          │
+│ public-data/client.ts  : 공공데이터포털 공통 클라이언트 (재시도·키 비노출)       │
 └───────────────┬─────────────────────────────────────────────────────────────┘
 ┌───────────────▼──────────── data/ ──────────────────────────────────────────┐
 │ samples/timetable.ts (예시 시간표) · mock/traffic-patterns.ts (가정 규칙)      │
@@ -29,7 +30,7 @@
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-엔진·데이터 선택은 `lib/services.ts` 한 곳에서만 한다 (`BUSTA_PREDICTION_ENGINE`, 기본 `mock`).
+엔진·데이터 선택은 `lib/services.ts` 한 곳에서만 한다 (키가 있으면 TAGO·특일정보, 없으면 샘플).
 구현되지 않은 엔진 이름을 넣으면 **Mock으로 조용히 대체하지 않고 에러**를 낸다 — 실제 데이터를 쓰는 줄 알았는데 Mock이 나가는 사고를 막기 위해서다.
 
 ## 폴더 구조
@@ -108,7 +109,16 @@ BUSTA는 날짜를 `"YYYY-MM-DD"`, 시각을 자정 기준 분으로만 다루�
 - "마지막 편"은 인덱스가 아니라 조건으로 찾는다 (늦는 편 뒤에 다시 늦지 않는 편이 오는 비단조 경우 대비)
 - 노선/터미널 오류 판정은 엔진 검증을 재사용해 메시지를 한 곳에서 관리
 
-### 6. 검색은 GET URL
+### 6. 실제 시간표는 "날짜별"이다 (TAGO 연동 후 변경)
+Mock 단계의 `listSchedules(routeId)`(요일별 고정 시간표)는 실제 데이터와 맞지 않았다. 실제 시간표는
+날짜마다 다르고, 같은 노선도 **출발편마다 소요시간이 다르다**(청주→수원 85/90분). 그래서
+- `ScheduleDataProvider.getTimetable(routeId, date) → Timetable { departures, referenceDate, notes, source }`
+- `BusSchedule.scheduledDurationMinutes`, `grade` 추가 → 엔진은 해당 출발편의 소요시간을 기준으로 예측
+- 시간표에 없는 시각은 그날 시간표의 중앙값을 기준으로 사용
+- API가 아직 공개하지 않은 날짜는 `referenceDate`가 다른 "참고 시간표"를 돌려주고 notes에 이유를 적는다 → 화면에 그대로 노출
+- 검색 폼은 `/api/timetable`로 노선·날짜별 시간표를 받는다 (키는 서버에만)
+
+### 7. 검색은 GET URL
 `/result?from=cheongju&to=seoul-gyeongbu&date=2026-10-02&time=17:00` — 결과를 공유·북마크할 수 있고, 서버 컴포넌트에서 계산하므로 향후 API 키가 브라우저에 노출되지 않는다.
 
 ## 엔진 교체 시나리오

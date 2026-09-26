@@ -8,3 +8,5 @@
 - Before finishing: `npm test && npm run typecheck && npm run lint && npm run build`.
 - Record real prompt iterations in `docs/prompt-log.md` and real failures in `docs/troubleshooting.md` — do not delete past entries.
 - Commit messages: conventional (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`), one feature per commit.
+- External APIs: fetch a real response first, save it (without keys) under `tests/fixtures/`, write parser tests, then implement. Never commit `.env.local` or print service keys.
+- In this cloud dev container, run the server with `NODE_USE_ENV_PROXY=1` so Node's fetch uses `HTTPS_PROXY` (not needed in normal deployments).
