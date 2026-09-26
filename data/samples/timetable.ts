@@ -58,9 +58,12 @@ const SCHEDULE_SEEDS: Record<string, { regular: string[]; lateNight?: string[] }
   "daejeon__cheongju": { regular: departures("06:10", "22:10", 30) },
 };
 
+const durationOf = (routeId: string) =>
+  SAMPLE_ROUTES.find((r) => r.id === routeId)!.scheduledDurationMinutes;
+
 export const SAMPLE_SCHEDULES: BusSchedule[] = Object.entries(SCHEDULE_SEEDS).flatMap(
   ([routeId, { regular, lateNight = [] }]) => [
     ...regular.map((departureTime) => ({ routeId, departureTime, operatingDays: EVERY_DAY })),
     ...lateNight.map((departureTime) => ({ routeId, departureTime, operatingDays: FRI_SUN })),
-  ].map((s) => ({ id: `${s.routeId}@${s.departureTime}`, ...s })),
+  ].map((s) => ({ id: `${s.routeId}@${s.departureTime}`, scheduledDurationMinutes: durationOf(routeId), ...s })),
 );

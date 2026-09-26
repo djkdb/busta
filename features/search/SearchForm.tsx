@@ -1,14 +1,14 @@
 "use client";
 
 import Form from "next/form";
-import { useMemo, useState } from "react";
-import { getDayOfWeek, isValidDate, parseClockTime } from "@/lib/utils/time";
-import type { BusSchedule, Route, Terminal } from "@/types/domain";
+import { useEffect, useMemo, useState } from "react";
+import type { TimetableResponse } from "@/app/api/timetable/route";
+import { isValidDate, parseClockTime } from "@/lib/utils/time";
+import type { Route, Terminal } from "@/types/domain";
 
 export interface SearchFormProps {
   terminals: Terminal[];
   routes: Route[];
-  schedules: BusSchedule[];
   today: string;
   nowMinutes: number;
   initial?: { from?: string; to?: string; date?: string; time?: string; arriveBy?: string };
@@ -19,7 +19,42 @@ type Mode = "depart" | "arrive";
 const fieldClass =
   "w-full appearance-none rounded-xl border border-border bg-surface px-3 py-3 text-base font-semibold text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft";
 
-export function SearchForm({ terminals, routes, schedules, today, nowMinutes, initial }: SearchFormProps) {
+type TimetableState =
+  | { key: string; status: "ok"; data: TimetableResponse }
+  | { key: string; status: "error"; message: string };
+
+/**
+ * 노선·날짜별 시간표를 서버(/api/timetable)에서 가져온다.
+ * 실제 시간표(TAGO)는 날짜마다 다르고 API 키는 서버에만 있으므로 클라이언트가 직접 부르지 않는다.
+ */
+function useTimetable(from: string, to: string, date: string) {
+  const key = from && to && isValidDate(date) ? `${from}|${to}|${date}` : "";
+  const [state, setState] = useState<TimetableState | null>(null);
+
+  useEffect(() => {
+    if (!key) return;
+    const controller = new AbortController();
+    fetch(`/api/timetable?${new URLSearchParams({ from, to, date })}`, { signal: controller.signal })
+      .then(async (res) => {
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error ?? "시간표를 불러오지 못했습니다.");
+        setState({ key, status: "ok", data: body as TimetableResponse });
+      })
+      .catch((e: unknown) => {
+        if (controller.signal.aborted) return;
+        setState({ key, status: "error", message: e instanceof Error ? e.message : "시간표를 불러오지 못했습니다." });
+      });
+    return () => controller.abort();
+  }, [key, from, to, date]);
+
+  if (!key) return { loading: false, data: null, error: null };
+  if (state?.key !== key) return { loading: true, data: null, error: null };
+  return state.status === "ok"
+    ? { loading: false, data: state.data, error: null }
+    : { loading: false, data: null, error: state.message };
+}
+
+export function SearchForm({ terminals, routes, today, nowMinutes, initial }: SearchFormProps) {
   const origins = useMemo(
     () => terminals.filter((t) => routes.some((r) => r.originId === t.id)),
     [terminals, routes],
@@ -35,13 +70,9 @@ export function SearchForm({ terminals, routes, schedules, today, nowMinutes, in
   const [date, setDate] = useState(initial?.date && isValidDate(initial.date) ? initial.date : today);
 
   const route = routes.find((r) => r.originId === from && r.destinationId === to);
-  const departures = useMemo(() => {
-    if (!route || !isValidDate(date)) return [];
-    const dow = getDayOfWeek(date);
-    return schedules
-      .filter((s) => s.routeId === route.id && s.operatingDays.includes(dow))
-      .map((s) => s.departureTime);
-  }, [route, date, schedules]);
+  const timetable = useTimetable(route ? from : "", route ? to : "", date);
+  const departureList = useMemo(() => timetable.data?.departures ?? [], [timetable.data]);
+  const departures = useMemo(() => departureList.map((d) => d.time), [departureList]);
 
   // 오늘이면 지금 이후 첫 출발편, 아니면 17시 이후 첫 편을 기본값으로 둔다.
   const suggested = useMemo(() => {
@@ -141,9 +172,11 @@ export function SearchForm({ terminals, routes, schedules, today, nowMinutes, in
                 className={fieldClass}
                 disabled={departures.length === 0}
               >
-                {departures.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
+                {timetable.loading && <option value="">불러오는 중…</option>}
+                {departureList.map((d) => (
+                  <option key={d.time} value={d.time}>
+                    {d.time}
+                    {d.grade ? ` · ${d.grade}` : ""}
                   </option>
                 ))}
               </select>
@@ -163,8 +196,19 @@ export function SearchForm({ terminals, routes, schedules, today, nowMinutes, in
             </label>
           )}
         </div>
-        {mode === "depart" && departures.length === 0 && (
+        {timetable.error && <p className="mt-2 text-sm text-ink-3">⚠️ {timetable.error}</p>}
+        {mode === "depart" && timetable.data && departures.length === 0 && (
           <p className="mt-2 text-sm text-ink-3">선택한 날짜에 운행하는 출발편이 없습니다.</p>
+        )}
+        {timetable.data && (
+          <p className="mt-2 text-xs leading-relaxed text-ink-3">
+            {timetable.data.source.isRealData ? "🟢" : "🟡"} 시간표: {timetable.data.source.label}
+            {timetable.data.notes.map((n) => (
+              <span key={n} className="block">
+                · {n}
+              </span>
+            ))}
+          </p>
         )}
       </div>
 

@@ -13,7 +13,6 @@ export default async function Home({ searchParams }: { searchParams: SearchParam
   const params = await searchParams;
   const { schedules } = getServices();
   const [terminals, routes] = await Promise.all([schedules.listTerminals(), schedules.listRoutes()]);
-  const allSchedules = (await Promise.all(routes.map((r) => schedules.listSchedules(r.id)))).flat();
 
   return (
     <main className="mx-auto w-full max-w-md px-4 pb-16">
@@ -34,16 +33,15 @@ export default async function Home({ searchParams }: { searchParams: SearchParam
       <SearchForm
         terminals={terminals}
         routes={routes}
-        schedules={allSchedules}
         today={todayInKorea()}
         nowMinutes={nowMinutesInKorea()}
         initial={{ from: one(params.from), to: one(params.to), date: one(params.date), time: one(params.time), arriveBy: one(params.arriveBy) }}
       />
 
       <p className="mt-6 text-center text-xs leading-relaxed text-ink-3">
-        🟡 현재는 예시 시간표와 가정 규칙 기반의 <strong>시연용 예측</strong>입니다.
+        {schedules.source.isRealData ? "🟢" : "🟡"} 시간표: {schedules.source.label}
         <br />
-        실제 교통 데이터는 아직 반영되지 않았습니다.
+        🟡 예상 소요시간은 실제 교통 데이터가 아닌 가정 규칙 기반의 <strong>시연용 예측</strong>입니다.
       </p>
     </main>
   );

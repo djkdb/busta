@@ -10,7 +10,7 @@
  * 표현 원칙: 근거 데이터가 Mock 인 동안 "추천/최적"이라 하지 않고 "예상 기준" 비교만 한다.
  * 여유 기준(tightSlackMinutes)은 통계가 아니라 화면 분류를 위한 UI 규칙이다.
  */
-import type { ScheduleDataProvider } from "@/lib/data/types";
+import { ScheduleUnavailableError, type ScheduleDataProvider, type Timetable } from "@/lib/data/types";
 import { isValidDate, MINUTES_PER_DAY, parseClockTime } from "@/lib/utils/time";
 import type {
   ArrivalTime,
@@ -20,7 +20,6 @@ import type {
   Route,
   Terminal,
 } from "@/types/domain";
-import { schedulesForDate } from "./analytics";
 import type { PredictionEngine, PredictionError } from "./types";
 
 export type PlanStatus = "on-time" | "tight" | "late";
@@ -131,7 +130,18 @@ export async function planByTargetArrival(
   const terminals = await schedules.listTerminals();
   const origin = terminals.find((t) => t.id === route.originId)!;
   const destination = terminals.find((t) => t.id === route.destinationId)!;
-  const day = schedulesForDate(await schedules.listSchedules(route.id), input.date);
+  let timetable: Timetable;
+  try {
+    timetable = await schedules.getTimetable(route.id, input.date);
+  } catch (e) {
+    if (!(e instanceof ScheduleUnavailableError)) throw e;
+    console.error(`[BUSTA] ${e.message}`);
+    return {
+      ok: false,
+      error: { code: "SCHEDULE_UNAVAILABLE", message: "시간표 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요." },
+    };
+  }
+  const day = timetable.departures;
 
   const all: PlanOption[] = [];
   let dataStatus: DataStatus | null = null;

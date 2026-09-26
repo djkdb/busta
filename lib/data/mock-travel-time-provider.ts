@@ -47,8 +47,12 @@ export class MockTravelTimeDataProvider implements TravelTimeDataProvider {
     private readonly rules: PatternRule[] = MOCK_PATTERN_RULES,
   ) {}
 
-  async getTravelTime({ route, date, departureMinutes }: TravelTimeQuery): Promise<TravelTimeData> {
-    const base = route.scheduledDurationMinutes;
+  async getTravelTime({
+    route,
+    date,
+    departureMinutes,
+    scheduledDurationMinutes: base,
+  }: TravelTimeQuery): Promise<TravelTimeData> {
     const sampleCount = Math.max(1, Math.ceil(base / SAMPLE_STEP_MINUTES));
     const totals = new Map<string, number>();
 

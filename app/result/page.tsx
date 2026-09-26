@@ -46,13 +46,15 @@ export default async function ResultPage({ searchParams }: { searchParams: Searc
     );
   }
 
-  const { prediction, origin, destination, route, dataStatus } = result;
+  const { prediction, origin, destination, route, dataStatus, departure } = result;
   const routeDay = { originId: origin.id, destinationId: destination.id, date: prediction.date };
+  // 엔진이 방금 같은 시간표를 조회했으므로 캐시에서 온다
+  const timetable = await schedules.getTimetable(route.id, prediction.date).catch(() => null);
   const [hourly, nearby] = await Promise.all([
     getHourlyProfile(engine, routeDay, {
       minuteOffset: Number(prediction.departureTime.slice(3)),
     }),
-    compareNearbyDepartures(engine, input, await schedules.listSchedules(route.id)),
+    timetable ? compareNearbyDepartures(engine, input, timetable.departures) : Promise.resolve([]),
   ]);
 
   const buildHref = (time: string) =>
@@ -74,6 +76,12 @@ export default async function ResultPage({ searchParams }: { searchParams: Searc
             </span>
           )}{" "}
           · <strong className="text-ink">{prediction.departureTime} 출발</strong>
+          {departure?.grade && (
+            <span className="ml-1 rounded bg-surface-2 px-1.5 py-0.5 text-xs font-semibold">{departure.grade}</span>
+          )}
+        </p>
+        <p className="mt-0.5 text-xs text-ink-3">
+          {origin.fullName} → {destination.fullName} · {route.busType === "express" ? "고속버스" : "시외버스"}
         </p>
       </header>
 

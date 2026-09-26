@@ -1,4 +1,5 @@
 import type {
+  BusSchedule,
   ClockTime,
   DataStatus,
   ISODate,
@@ -20,6 +21,7 @@ export type PredictionErrorCode =
   | "SAME_ORIGIN_DESTINATION"
   | "UNKNOWN_TERMINAL"
   | "ROUTE_NOT_FOUND"
+  | "SCHEDULE_UNAVAILABLE"
   | "NO_TRAVEL_TIME_DATA";
 
 export interface PredictionError {
@@ -35,6 +37,8 @@ export interface PredictionSuccess {
   destination: Terminal;
   /** 선택한 시각이 해당 날짜의 시간표에 있는 출발편인지 */
   isScheduledDeparture: boolean;
+  /** 시간표의 해당 출발편 (등급·편별 소요시간). 시간표에 없는 시각이면 null */
+  departure: BusSchedule | null;
   dataStatus: DataStatus;
 }
 

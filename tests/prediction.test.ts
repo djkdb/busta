@@ -2,11 +2,7 @@ import { describe, expect, it } from "vitest";
 import { MOCK_PATTERN_RULES } from "@/data/mock/traffic-patterns";
 import { classifyDay, StaticHolidayCalendar } from "@/lib/data/holiday-calendar";
 import { MockTravelTimeDataProvider, ruleWeightAt } from "@/lib/data/mock-travel-time-provider";
-import {
-  compareNearbyDepartures,
-  getHourlyProfile,
-  schedulesForDate,
-} from "@/lib/prediction/analytics";
+import { compareNearbyDepartures, getHourlyProfile } from "@/lib/prediction/analytics";
 import { MockPredictionEngine, ProviderPredictionEngine } from "@/lib/prediction/engine";
 import { SampleScheduleDataProvider } from "@/lib/data/sample-schedule-provider";
 import type { PredictionInput } from "@/lib/prediction/types";
@@ -186,7 +182,12 @@ describe("MockTravelTimeDataProvider", () => {
   it("factor effects add up to the applied multiplier (explanation matches number)", async () => {
     const provider = new MockTravelTimeDataProvider(calendar);
     const route = (await new SampleScheduleDataProvider().findRoute("cheongju", "seoul-gyeongbu"))!;
-    const data = await provider.getTravelTime({ route, date: "2026-10-02", departureMinutes: 1020 });
+    const data = await provider.getTravelTime({
+      route,
+      date: "2026-10-02",
+      departureMinutes: 1020,
+      scheduledDurationMinutes: route.scheduledDurationMinutes,
+    });
     const sum = data.factors.reduce((acc, f) => acc + f.effect, 0);
     expect(Math.abs(route.scheduledDurationMinutes * (1 + sum) - data.durationMinutes)).toBeLessThan(1);
   });
@@ -207,28 +208,26 @@ describe("analytics", () => {
     expect(hourly).toEqual([]);
   });
 
-  it("filters schedules by operating day", async () => {
-    const schedules = await new SampleScheduleDataProvider().listSchedules("cheongju__seoul-gyeongbu");
-    const fri = schedulesForDate(schedules, "2026-10-02").map((s) => s.departureTime);
-    const tue = schedulesForDate(schedules, "2026-10-06").map((s) => s.departureTime);
+  it("sample timetable filters departures by operating day", async () => {
+    const provider = new SampleScheduleDataProvider();
+    const times = async (date: string) =>
+      (await provider.getTimetable("cheongju__seoul-gyeongbu", date)).departures.map((s) => s.departureTime);
+    const fri = await times("2026-10-02");
+    const tue = await times("2026-10-06");
     expect(fri).toContain("23:00");
     expect(tue).not.toContain("23:00");
   });
 
   it("compares nearby scheduled departures around the selected one", async () => {
-    const schedules = await new SampleScheduleDataProvider().listSchedules("cheongju__seoul-gyeongbu");
-    const nearby = await compareNearbyDepartures(
-      engine,
-      { ...base, departureTime: "17:20" },
-      schedules,
-    );
+    const { departures } = await new SampleScheduleDataProvider().getTimetable("cheongju__seoul-gyeongbu", base.date);
+    const nearby = await compareNearbyDepartures(engine, { ...base, departureTime: "17:20" }, departures);
     // 40분 배차: 16:00 16:40 [17:20] 18:00 18:40
     expect(nearby.map((p) => p.departureTime)).toEqual(["16:00", "16:40", "17:20", "18:00", "18:40"]);
   });
 
   it("centers on the closest departure when the time is off-schedule", async () => {
-    const schedules = await new SampleScheduleDataProvider().listSchedules("cheongju__seoul-gyeongbu");
-    const nearby = await compareNearbyDepartures(engine, { ...base, departureTime: "06:05" }, schedules);
+    const { departures } = await new SampleScheduleDataProvider().getTimetable("cheongju__seoul-gyeongbu", base.date);
+    const nearby = await compareNearbyDepartures(engine, { ...base, departureTime: "06:05" }, departures);
     expect(nearby[0].departureTime).toBe("06:00");
     expect(nearby).toHaveLength(3);
   });

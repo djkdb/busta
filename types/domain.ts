@@ -48,6 +48,10 @@ export interface BusSchedule {
   routeId: string;
   departureTime: ClockTime;
   operatingDays: DayOfWeek[];
+  /** 이 출발편의 시간표 소요시간(분). 실제 시간표는 편마다 다를 수 있다 (예: 85분/90분) */
+  scheduledDurationMinutes: number;
+  /** 등급 (우등, 고속, 프리미엄, 일반 …) */
+  grade?: string;
 }
 
 /** 실제 관측된 운행 1건. Phase 3~4(Historical)에서 채워진다. */
@@ -63,6 +67,7 @@ export interface TravelTimeObservation {
 
 export type DataSourceKind =
   | "sample" // 사람이 만든 예시 데이터 (시간표 등)
+  | "public-api" // 공공데이터포털 등 공식 공개 API
   | "mock" // 규칙 기반 가정 패턴 (실제 통계 아님)
   | "historical" // 실제 운행/통행 기록 집계
   | "traffic-api" // 실시간·예측 교통 API

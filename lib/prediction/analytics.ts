@@ -2,7 +2,7 @@
  * 시간대별 분석 / 출발시간 비교.
  * 모든 계산은 PredictionEngine 인터페이스만 사용하므로 엔진이 바뀌어도 그대로 동작한다.
  */
-import { formatClockTime, getDayOfWeek, parseClockTime } from "@/lib/utils/time";
+import { formatClockTime, parseClockTime } from "@/lib/utils/time";
 import type { BusSchedule, ClockTime, ISODate } from "@/types/domain";
 import type { PredictionEngine, PredictionInput } from "./types";
 
@@ -57,24 +57,19 @@ export async function getHourlyProfile(
   return points;
 }
 
-/** 해당 날짜에 운행하는 시간표 출발편만 추린다 */
-export function schedulesForDate(schedules: BusSchedule[], date: ISODate): BusSchedule[] {
-  const dow = getDayOfWeek(date);
-  return schedules.filter((s) => s.operatingDays.includes(dow));
-}
-
 /**
  * 선택한 출발편 앞뒤 `span`개의 시간표 출발편 예측을 비교한다.
+ * `departures` 는 그 날짜의 시간표(ScheduleDataProvider.getTimetable)여야 한다.
  * 선택 시각이 시간표에 없으면 가장 가까운 편을 중심으로 삼는다.
  */
 export async function compareNearbyDepartures(
   engine: PredictionEngine,
   input: PredictionInput,
-  schedules: BusSchedule[],
+  departures: BusSchedule[],
   span = 2,
 ): Promise<DeparturePoint[]> {
   const target = parseClockTime(input.departureTime);
-  const day = schedulesForDate(schedules, input.date);
+  const day = departures;
   if (target === null || day.length === 0) return [];
 
   let center = 0;

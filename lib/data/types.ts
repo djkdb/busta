@@ -18,12 +18,36 @@ import type {
   Terminal,
 } from "@/types/domain";
 
+/**
+ * 특정 날짜의 시간표.
+ * 실제 시간표 API 는 가까운 며칠만 제공하므로, 요청 날짜의 시간표가 없으면 다른 날짜
+ * (referenceDate)의 시간표를 참고용으로 돌려줄 수 있다. 이 경우 notes 에 반드시 이유를 적는다.
+ */
+export interface Timetable {
+  routeId: string;
+  date: ISODate;
+  referenceDate: ISODate;
+  /** 출발시각 오름차순, 출발시각 중복 없음 */
+  departures: BusSchedule[];
+  source: DataSourceInfo;
+  notes: string[];
+}
+
 export interface ScheduleDataProvider {
   readonly source: DataSourceInfo;
   listTerminals(): Promise<Terminal[]>;
   listRoutes(): Promise<Route[]>;
   findRoute(originId: string, destinationId: string): Promise<Route | null>;
-  listSchedules(routeId: string): Promise<BusSchedule[]>;
+  /** 실패 시 ScheduleUnavailableError 를 던진다 */
+  getTimetable(routeId: string, date: ISODate): Promise<Timetable>;
+}
+
+/** 시간표를 가져오지 못했을 때 (네트워크, 인증, API 오류) */
+export class ScheduleUnavailableError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = "ScheduleUnavailableError";
+  }
 }
 
 export interface TravelTimeQuery {
@@ -31,6 +55,8 @@ export interface TravelTimeQuery {
   date: ISODate;
   /** 자정 기준 분 */
   departureMinutes: number;
+  /** 이 출발편의 시간표 소요시간(분) — 예측의 기준값 */
+  scheduledDurationMinutes: number;
 }
 
 export interface TravelTimeData {
@@ -53,6 +79,11 @@ export interface HolidayInfo {
 }
 
 export interface HolidayCalendar {
+  /**
+   * (선택) 이 날짜 계산에 필요한 공휴일 데이터를 미리 불러온다. API 기반 달력용.
+   * 실패해도 던지지 않고, 해당 연도를 covers() === false 로 둔다.
+   */
+  prepare?(date: ISODate): Promise<void>;
   /** 이 날짜의 공휴일 정보를 보유하고 있는가 */
   covers(date: ISODate): boolean;
   getHoliday(date: ISODate): HolidayInfo | null;
