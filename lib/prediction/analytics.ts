@@ -34,15 +34,24 @@ async function toPoint(
   };
 }
 
-/** 정각 출발을 가정한 시간대별 예상 소요시간 (기본 06~23시) */
+/**
+ * 1시간 간격 출발을 가정한 시간대별 예상 소요시간 (기본 06~23시).
+ * minuteOffset 을 선택한 출발시각의 "분"으로 주면(17:20 → 20) 시리즈에 선택 출발편이
+ * 그대로 포함되어, 차트와 상단 ETA 숫자가 항상 일치한다.
+ */
 export async function getHourlyProfile(
   engine: PredictionEngine,
   query: RouteDay,
-  { fromHour = 6, toHour = 23 }: { fromHour?: number; toHour?: number } = {},
+  {
+    fromHour = 6,
+    toHour = 23,
+    minuteOffset = 0,
+  }: { fromHour?: number; toHour?: number; minuteOffset?: number } = {},
 ): Promise<DeparturePoint[]> {
   const points: DeparturePoint[] = [];
   for (let h = fromHour; h <= toHour; h++) {
-    const point = await toPoint(engine, { ...query, departureTime: formatClockTime(h * 60) });
+    const departureTime = formatClockTime(h * 60 + minuteOffset);
+    const point = await toPoint(engine, { ...query, departureTime });
     if (point) points.push(point);
   }
   return points;

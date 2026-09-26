@@ -233,3 +233,14 @@ describe("analytics", () => {
     expect(nearby).toHaveLength(3);
   });
 });
+
+describe("hourly profile ↔ ETA consistency", () => {
+  it("includes the selected off-hour departure with the same numbers as the ETA", async () => {
+    const input = { ...base, departureTime: "17:20" };
+    const { prediction } = await predictOk(input);
+    const hourly = await getHourlyProfile(engine, input, { minuteOffset: 20 });
+    const point = hourly.find((p) => p.departureTime === "17:20");
+    expect(point?.predictedDurationMinutes).toBe(prediction.predictedDurationMinutes);
+    expect(point?.predictedArrivalTime).toBe(prediction.predictedArrival.time);
+  });
+});
