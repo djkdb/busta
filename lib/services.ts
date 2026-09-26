@@ -17,14 +17,17 @@ import { KasiHolidayCalendar } from "@/lib/data/kasi-holiday-calendar";
 import { MockTravelTimeDataProvider } from "@/lib/data/mock-travel-time-provider";
 import { PublicDataClient } from "@/lib/data/public-data/client";
 import { SampleScheduleDataProvider } from "@/lib/data/sample-schedule-provider";
+import { TagoLiveArrivalProvider } from "@/lib/data/tago/tago-live-arrival-provider";
 import { TagoScheduleDataProvider } from "@/lib/data/tago/tago-schedule-provider";
-import type { HolidayCalendar, ScheduleDataProvider } from "@/lib/data/types";
+import type { HolidayCalendar, LiveArrivalProvider, ScheduleDataProvider } from "@/lib/data/types";
 import { ProviderPredictionEngine } from "@/lib/prediction/engine";
 import type { PredictionEngine } from "@/lib/prediction/types";
 
 export interface BustaServices {
   engine: PredictionEngine;
   schedules: ScheduleDataProvider;
+  /** 운행 중 버스 도착 정보. TAGO 시간표를 쓸 때만 있다 */
+  live: LiveArrivalProvider | null;
 }
 
 let cached: BustaServices | null = null;
@@ -57,14 +60,14 @@ export function getServices(): BustaServices {
   const holidaySource = choose("BUSTA_HOLIDAY_SOURCE", ["kasi", "static"], holidayKey ? "kasi" : "static");
   choose("BUSTA_PREDICTION_ENGINE", ["mock"], "mock");
 
-  const schedules: ScheduleDataProvider =
+  const tagoClient =
     scheduleSource === "tago"
-      ? new TagoScheduleDataProvider(
-          new PublicDataClient({ serviceKey: requireKey(scheduleKey, "TAGO 시간표") }),
-          TAGO_TERMINALS,
-          TAGO_ROUTES,
-        )
-      : new SampleScheduleDataProvider();
+      ? new PublicDataClient({ serviceKey: requireKey(scheduleKey, "TAGO 시간표") })
+      : null;
+  const schedules: ScheduleDataProvider = tagoClient
+    ? new TagoScheduleDataProvider(tagoClient, TAGO_TERMINALS, TAGO_ROUTES)
+    : new SampleScheduleDataProvider();
+  const live = tagoClient ? new TagoLiveArrivalProvider(tagoClient, TAGO_ROUTES) : null;
 
   const holidays: HolidayCalendar =
     holidaySource === "kasi"
@@ -73,6 +76,7 @@ export function getServices(): BustaServices {
 
   cached = {
     schedules,
+    live,
     engine: new ProviderPredictionEngine("mock-pattern", {
       schedules,
       travelTime: new MockTravelTimeDataProvider(holidays),

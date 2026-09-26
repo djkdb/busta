@@ -104,7 +104,10 @@ export class PublicDataClient {
     }
     if (!res.ok) throw new PublicDataApiError(`${path}: HTTP ${res.status}`, "http");
 
-    const header = (json as { response?: { header?: { resultCode?: string; resultMsg?: string } } }).response?.header;
+    // 오류 응답 중에는 response 래퍼 없이 최상위에 header 만 오는 경우가 있다 (고속버스도착정보, 실측)
+    type Header = { resultCode?: string; resultMsg?: string };
+    const header =
+      (json as { response?: { header?: Header } }).response?.header ?? (json as { header?: Header }).header;
     if (!header) throw new PublicDataApiError(`${path}: 응답 형식을 알 수 없음`, "parse");
     if (header.resultCode !== "00") {
       throw new PublicDataApiError(`${path}: ${header.resultMsg ?? "API 오류"} (${header.resultCode})`, "api");

@@ -12,6 +12,8 @@ import { MockTravelTimeDataProvider } from "@/lib/data/mock-travel-time-provider
 import { extractItems, PublicDataApiError, PublicDataClient, type FetchLike } from "@/lib/data/public-data/client";
 import { parseTagoDateTime, parseTagoSchedules, type TagoScheduleItem } from "@/lib/data/tago/parse";
 import { TagoScheduleDataProvider } from "@/lib/data/tago/tago-schedule-provider";
+import { parseArrivalSnapshot, type TagoArrivalItem } from "@/lib/data/tago/arrival";
+import { TagoLiveArrivalProvider, toArrivalTerminalCode } from "@/lib/data/tago/tago-live-arrival-provider";
 import { ScheduleUnavailableError } from "@/lib/data/types";
 import { ProviderPredictionEngine } from "@/lib/prediction/engine";
 
@@ -322,5 +324,77 @@ describe("engine with real TAGO timetable", () => {
     spy.mockRestore();
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error.code).toBe("SCHEDULE_UNAVAILABLE");
+  });
+});
+
+describe("parseArrivalSnapshot (real 2026-09-26 17:19 KST response)", () => {
+  const load = (name: string) => parseArrivalSnapshot(extractItems<TagoArrivalItem>(json(name)));
+
+  it("derives the data's base time (not real time) from arrival − remaining", () => {
+    // 조회는 17:19 에 했지만 데이터 기준은 16:44 였다
+    expect(load("arrival-cheongju-seoulgyeongbu-20260926T1719.json").basedAt).toEqual({ date: "2026-09-26", time: "16:44" });
+  });
+
+  it("reads arrived trips as actual durations", () => {
+    const { trips } = load("arrival-cheongju-seoulgyeongbu-20260926T1719.json");
+    const arrived = trips.filter((t) => t.status === "arrived");
+    expect(arrived.map((t) => [t.departureTime, t.arrival?.time, t.durationMinutes])).toEqual([
+      ["15:10", "16:36", 86],
+      ["15:20", "16:44", 84],
+    ]);
+  });
+
+  it("keeps en-route estimates with location and remaining minutes", () => {
+    const trip = load("arrival-cheongju-seoulgyeongbu-20260926T1719.json").trips.find((t) => t.departureTime === "15:30")!;
+    expect(trip).toMatchObject({ status: "en-route", remainingMinutes: 5, location: "양재IC", durationMinutes: 79, grade: "프리미엄" });
+  });
+
+  it("drops meaningless estimates for buses that have not departed yet", () => {
+    // 16:50, 17:00 출발편이 모두 '18:02 도착'으로 온 값 → 기준 시각(16:44) 이후 출발이므로 예정시각을 쓰지 않는다
+    const { trips } = load("arrival-seoulgyeongbu-cheongju-20260926T1719.json");
+    for (const time of ["16:50", "17:00"]) {
+      expect(trips.find((t) => t.departureTime === time)).toMatchObject({ status: "not-departed", arrival: null, durationMinutes: null });
+    }
+  });
+
+  it("handles trips that cross midnight", () => {
+    const { trips } = parseArrivalSnapshot([{ depTm: "23:30", arrPrdtTm: "2026-09-27 01:00", rmnTm: "도착완료" }]);
+    expect(trips[0]).toMatchObject({ departureDate: "2026-09-26", departureTime: "23:30", durationMinutes: 90 });
+  });
+
+  it("counts malformed rows instead of hiding them", () => {
+    const snap = parseArrivalSnapshot([{ depTm: "15:10", arrPrdtTm: "2026-09-26 16:36", rmnTm: "곧 도착" }, { depTm: "x" }]);
+    expect(snap.skipped).toBe(2);
+  });
+});
+
+describe("TagoLiveArrivalProvider", () => {
+  it("maps NAEK terminal IDs to arrival codes and supports only express routes", async () => {
+    expect(toArrivalTerminalCode("NAEK400")).toBe("400");
+    expect(toArrivalTerminalCode("NAI2839701")).toBeNull();
+    const calls: string[] = [];
+    const client = new PublicDataClient({
+      serviceKey: SECRET,
+      fetch: async (url) => {
+        calls.push(url);
+        return new Response(fixture("arrival-cheongju-seoulgyeongbu-20260926T1719.json"));
+      },
+    });
+    const live = new TagoLiveArrivalProvider(client, TAGO_ROUTES);
+    const snap = await live.getLiveSnapshot("cheongju-express__seoul-gyeongbu");
+    expect(snap?.trips.length).toBe(11);
+    expect(new URL(calls[0]).searchParams.get("depTmnCd")).toBe("400");
+    expect(new URL(calls[0]).searchParams.get("arrTmnCd")).toBe("010");
+    expect(await live.getLiveSnapshot("cheongju-intercity__daejeon")).toBeNull();
+  });
+
+  it("reports the header-only error shape as an API error", async () => {
+    const client = new PublicDataClient({
+      serviceKey: SECRET,
+      fetch: async () => new Response(fixture("arrival-error-missing-param.json")),
+    });
+    const error = (await client.getJson("/x", {}).catch((e: unknown) => e)) as PublicDataApiError;
+    expect(error.kind).toBe("api");
+    expect(error.message).toContain("99");
   });
 });

@@ -10,6 +10,7 @@
  */
 import type {
   BusSchedule,
+  ClockTime,
   DataSourceInfo,
   DayType,
   ISODate,
@@ -90,3 +91,34 @@ export interface HolidayCalendar {
 }
 
 export type { DayType };
+
+/* ---------- 운행 중 버스 도착 정보 (고속버스도착정보) ---------- */
+
+export type LiveTripStatus = "arrived" | "en-route" | "not-departed";
+
+export interface LiveTrip {
+  departureDate: ISODate;
+  departureTime: ClockTime;
+  status: LiveTripStatus;
+  /** arrived: 도착 기록 시각 / en-route: 기준 시각의 도착 예정 / not-departed: null */
+  arrival: { date: ISODate; time: ClockTime } | null;
+  /** arrival 이 있을 때 출발~도착(예정) 분 */
+  durationMinutes: number | null;
+  remainingMinutes: number | null;
+  grade: string | null;
+  operator: string | null;
+  location: string | null;
+}
+
+export interface LiveSnapshot {
+  /** 데이터 기준 시각. 실시간이 아니다(실측상 20~35분 지연) — 화면에 반드시 표시 */
+  basedAt: { date: ISODate; time: ClockTime } | null;
+  trips: LiveTrip[];
+  skipped: number;
+}
+
+export interface LiveArrivalProvider {
+  readonly source: DataSourceInfo;
+  /** 지원하지 않는 노선(시외버스 등)이면 null. 실패 시 ScheduleUnavailableError */
+  getLiveSnapshot(routeId: string): Promise<LiveSnapshot | null>;
+}

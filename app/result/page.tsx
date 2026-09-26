@@ -4,11 +4,12 @@ import { DataStatusNotice } from "@/components/DataStatusNotice";
 import { SiteHeader } from "@/components/SiteHeader";
 import { DepartureComparison } from "@/features/analytics/DepartureComparison";
 import { HourlyChart } from "@/features/analytics/HourlyChart";
+import { LiveTrips } from "@/features/live/LiveTrips";
 import { EtaSummary } from "@/features/prediction/EtaSummary";
 import { PredictionFactors } from "@/features/prediction/PredictionFactors";
 import { compareNearbyDepartures, getHourlyProfile } from "@/lib/prediction/analytics";
 import { getServices } from "@/lib/services";
-import { formatDateKo } from "@/lib/utils/time";
+import { formatDateKo, todayInKorea } from "@/lib/utils/time";
 
 export const metadata: Metadata = { title: "예상 도착시간 — BUSTA" };
 
@@ -25,7 +26,7 @@ export default async function ResultPage({ searchParams }: { searchParams: Searc
     departureTime: one(params.time),
   };
 
-  const { engine, schedules } = getServices();
+  const { engine, schedules, live } = getServices();
   const result = await engine.predict(input);
 
   if (!result.ok) {
@@ -50,6 +51,14 @@ export default async function ResultPage({ searchParams }: { searchParams: Searc
   const routeDay = { originId: origin.id, destinationId: destination.id, date: prediction.date };
   // 엔진이 방금 같은 시간표를 조회했으므로 캐시에서 온다
   const timetable = await schedules.getTimetable(route.id, prediction.date).catch(() => null);
+  // 오늘 날짜일 때만: 실제 운행 중·도착 완료 버스 (실패해도 결과 화면은 그대로 보여준다)
+  const liveSnapshot =
+    live && prediction.date === todayInKorea()
+      ? await live.getLiveSnapshot(route.id).catch((e: unknown) => {
+          console.error(`[BUSTA] ${e instanceof Error ? e.message : e}`);
+          return null;
+        })
+      : null;
   const [hourly, nearby] = await Promise.all([
     getHourlyProfile(engine, routeDay, {
       minuteOffset: Number(prediction.departureTime.slice(3)),
@@ -87,6 +96,15 @@ export default async function ResultPage({ searchParams }: { searchParams: Searc
 
       <EtaSummary prediction={prediction} />
       <DataStatusNotice status={dataStatus} />
+      {liveSnapshot && (
+        <LiveTrips
+          snapshot={liveSnapshot}
+          selectedTime={prediction.departureTime}
+          scheduledDurationMinutes={prediction.scheduledDurationMinutes}
+          predictedDurationMinutes={prediction.predictedDurationMinutes}
+          isMockPrediction={!dataStatus.travelTime.isRealData}
+        />
+      )}
       <PredictionFactors prediction={prediction} />
       <HourlyChart key={`${prediction.date}-${prediction.departureTime}`} points={hourly} selectedTime={prediction.departureTime} />
       <DepartureComparison
