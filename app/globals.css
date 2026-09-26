@@ -1,26 +1,66 @@
 @import "tailwindcss";
 
+/*
+ * BUSTA 디자인 토큰
+ * - ink: 텍스트, surface: 배경, accent: 예측(BUSTA 값), muted: 시간표 값
+ * - warn: "시연용 데이터" 경고 전용 (다른 용도로 쓰지 않는다)
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --background: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #eef1f5;
+  --border: #e2e6ec;
+  --ink: #0f172a;
+  --ink-2: #475569;
+  --ink-3: #64748b;
+  --accent: #2448d8;
+  --accent-soft: #e5ebff;
+  --accent-bar: #9db0f5;
+  --warn-bg: #fff7db;
+  --warn-border: #f2d680;
+  --warn-ink: #6b4e00;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0b1020;
+    --surface: #141a2e;
+    --surface-2: #1c2440;
+    --border: #28314f;
+    --ink: #eef2ff;
+    --ink-2: #b6c0da;
+    --ink-3: #8c97b5;
+    --accent: #8fa8ff;
+    --accent-soft: #1f2a55;
+    --accent-bar: #4a5fb0;
+    --warn-bg: #2d2610;
+    --warn-border: #5c4b14;
+    --warn-ink: #f5dc8a;
   }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-bar: var(--accent-bar);
+  --color-warn-bg: var(--warn-bg);
+  --color-warn-border: var(--warn-border);
+  --color-warn-ink: var(--warn-ink);
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+    "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
 }
 
 body {
   background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "tnum";
+  word-break: keep-all;
 }
