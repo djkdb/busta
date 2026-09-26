@@ -15,6 +15,7 @@
 │ ProviderPredictionEngine : 입력 검증 → 노선 조회 → 소요시간 → 도착/지연 계산    │
 │   └ MockPredictionEngine (현재)                                              │
 │ analytics.ts : getHourlyProfile, compareNearbyDepartures (엔진 무관)          │
+│ planner.ts   : planByTargetArrival — 목표 도착시각 역산 (엔진 무관)            │
 └───────────────┬─────────────────────────────────────────────────────────────┘
                 │  Provider 인터페이스 (lib/data/types.ts)
 ┌───────────────▼──────────── lib/data ───────────────────────────────────────┐
@@ -34,12 +35,13 @@
 ## 폴더 구조
 
 ```
-app/                 Next.js 라우트 (/, /result)
+app/                 Next.js 라우트 (/, /result, /plan)
 components/          범용 UI (SiteHeader, DataStatusNotice)
 features/
 ├── search/          검색 폼
 ├── prediction/      ETA 결과, 예측 근거
-└── analytics/       시간대별 차트, 출발편 비교
+├── analytics/       시간대별 차트, 출발편 비교
+└── planner/         목표 도착시각 결과
 lib/
 ├── data/            Provider 인터페이스와 구현체, 데이터 출처 정의
 ├── prediction/      엔진, 분석 함수
@@ -99,7 +101,14 @@ BUSTA는 날짜를 `"YYYY-MM-DD"`, 시각을 자정 기준 분으로만 다루�
 소요시간(100분 vs 128분)을 막대로 그리면 0부터 시작해야 해서 차이가 작아 보이고, 축을 잘라내면 과장이 된다.
 그래서 **시간표 소요시간 = 0 기준선**, 막대 = 추가/단축 시간으로 그린다. 시간대별 시리즈는 선택 출발편의 "분"을 유지해(17:20 → 06:20…23:20) 강조 막대가 상단 ETA 숫자와 항상 같다.
 
-### 5. 검색은 GET URL
+### 5. 목표 도착시각 역산 (planner)
+- 해당 날짜에 운행하는 모든 시간표 출발편을 엔진으로 예측 → `여유 = 목표 − 예상 도착` (자정 넘김은 +1440분이라 같은 날 목표에 대해 자동으로 late)
+- 상태: `late`(여유 < 0), `tight`(0 ≤ 여유 < 15분), `on-time`. **15분은 통계가 아니라 화면 분류용 UI 규칙**
+- `timetableTrap = 시간표상 도착 ≤ 목표 && 예상 기준 late` — BUSTA가 시간표 서비스와 달라지는 지점
+- "마지막 편"은 인덱스가 아니라 조건으로 찾는다 (늦는 편 뒤에 다시 늦지 않는 편이 오는 비단조 경우 대비)
+- 노선/터미널 오류 판정은 엔진 검증을 재사용해 메시지를 한 곳에서 관리
+
+### 6. 검색은 GET URL
 `/result?from=cheongju&to=seoul-gyeongbu&date=2026-10-02&time=17:00` — 결과를 공유·북마크할 수 있고, 서버 컴포넌트에서 계산하므로 향후 API 키가 브라우저에 노출되지 않는다.
 
 ## 엔진 교체 시나리오

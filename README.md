@@ -20,6 +20,14 @@ BUSTA · 청주 → 서울(경부) · 10월 2일 (금) 17:00 출발
 🟡 시연용 예측 데이터
 ```
 
+```
+BUSTA · 서울(경부) → 청주 · 10월 2일 (금) · 19:00까지 도착
+
+예상 기준, 19:00까지 도착하는 마지막 출발편   16:40  (예상 도착 18:56, 여유 4분)
+여유 있게 가려면                          16:00  (예상 도착 18:06, 여유 54분)
+⚠️ 시간표만 보면 놓치는 출발편              17:20  시간표상 19:00 도착 → 예상 19:45
+```
+
 ---
 
 ## 목차
@@ -56,7 +64,8 @@ BUSTA · 청주 → 서울(경부) · 10월 2일 (금) 17:00 출발
 | **시간대별 분석** | ✅ | 같은 날 1시간 간격 출발 시 시간표 대비 차이를 차트로 (탭하면 상세, 표 보기) |
 | **출발편 비교** | ✅ | 앞뒤 시간표 출발편의 예상 소요·도착 비교. Mock 단계에서는 "최적"이라 단정하지 않음 |
 | 자정 넘김 / 공휴일 / 요일별 운행 | ✅ | 23:00 출발 → 다음날 도착 `+1일`, 한글날 등 공휴일 반영, 금·일 심야편 |
-| 목표 도착시각 역산 | ⏭ Phase 6 | "19시까지 도착하려면?" |
+| **목표 도착시각 역산** | ✅ | "19시까지 도착하려면?" → 예상 기준 늦지 않는 마지막 출발편, 여유 적을 때 대안, 출발편별 도착 가능/여유 적음/늦을 수 있음 |
+| **시간표 함정 탐지** | ✅ | 시간표상으로는 제시간이지만 예상으로는 늦는 출발편을 따로 경고 — 기존 시간표 서비스에서는 보이지 않는 위험 |
 
 ## 실행 방법
 
@@ -65,7 +74,7 @@ nvm use            # Node 22
 npm install
 npm run dev        # http://localhost:3000
 
-npm test           # Vitest (47 tests)
+npm test           # Vitest (65 tests)
 npm run typecheck  # next typegen + tsc
 npm run lint
 npm run build
@@ -150,7 +159,9 @@ feat: add prediction engine, hourly analytics and departure comparison
 feat: add route search flow with timetable-aware departure picker
 feat: add ETA result screen with data reliability notice
 feat: add hourly travel time chart and nearby departure comparison
-docs: ...
+docs: add problem, architecture, data sources, AI workflow, ...
+feat: add target-arrival planner that compares departures against an arrive-by time
+feat: add arrive-by search mode and departure plan screen
 ```
 
 ## Troubleshooting
@@ -171,7 +182,7 @@ docs: ...
 | 3 | 실제 시간표(TAGO) + 교통 데이터 | ⏭ 다음 |
 | 4 | 실제 운행 이력 수집 → Historical 예측, **정확도 측정** | |
 | 5 | ML (데이터가 충분할 때만) | |
-| 6 | 목표 도착시각 → 출발편 비교 | |
+| 6 | 목표 도착시각 → 출발편 비교, 시간표 함정 탐지 | ✅ (Mock 기반) |
 
 → [`docs/roadmap.md`](docs/roadmap.md)
 
