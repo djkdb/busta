@@ -27,8 +27,9 @@ Mock Data ──▶ Real Timetable ──▶ Traffic Data ──▶ Historical D
    - 노선×15분 버킷 캐싱
 4. 터미널 좌표 테이블 구축
 
-## Phase 4 — 예측 고도화 (Historical)
-1. **TAGO 고속버스도착정보 폴러**로 실제 운행 이력(`TravelTimeObservation`) 자체 수집 — 가능한 한 빨리 수집 시작 (데이터는 시간이 지나야 쌓임)
+## 🔶 Phase 4 — 예측 고도화 (Historical)
+0. ✅ **TAGO 고속버스도착정보 연결** — 오늘 날짜 결과 화면에 실제 운행(도착 완료·운행 중) 표시, 첫 검증 기록 (`docs/validation.md`: 가정 규칙 MAE 약 23분 vs 시간표 약 3분, n=8)
+1. ⏭ **도착 기록 수집기**로 실제 운행 이력(`TravelTimeObservation`) 자체 수집 — 가능한 한 빨리 수집 시작 (데이터는 시간이 지나야 쌓임). 도착정보는 도착 후 잠깐만 남으므로 15분 이하 주기로 조회해야 한다
 2. `HistoricalAverageTravelTimeDataProvider`: 노선 × 요일유형 × 시간대 버킷 중앙값/P80
 3. **처음으로 정확도 측정**: Mock/Traffic/Historical 각각의 실제 대비 MAE 비교 → 그때부터 "정확도" 표기
 4. 결과 화면에 표본 수(`sampleSize`)와 범위 표시

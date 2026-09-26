@@ -66,6 +66,7 @@ BUSTA · 서울(경부) → 청주 · 10월 2일 (금) · 19:00까지 도착
 | **출발편 비교** | ✅ | 앞뒤 시간표 출발편의 예상 소요·도착 비교. Mock 단계에서는 "최적"이라 단정하지 않음 |
 | 자정 넘김 / 공휴일 / 요일별 운행 | ✅ | 23:00 출발 → 다음날 도착 `+1일`, 한글날 등 공휴일 반영, 금·일 심야편 |
 | **목표 도착시각 역산** | ✅ | "19시까지 도착하려면?" → 예상 기준 늦지 않는 마지막 출발편, 여유 적을 때 대안, 출발편별 도착 가능/여유 적음/늦을 수 있음 |
+| **오늘의 실제 운행** | ✅ | 오늘 날짜 조회 시 이 노선의 최근 도착 완료 편(실제 소요시간)과 운행 중 편(위치·도착 예정)을 🟢 실제 데이터로 표시. 원본이 실시간이 아니므로 기준 시각을 함께 표시 |
 | **시간표 함정 탐지** | ✅ | 시간표상으로는 제시간이지만 예상으로는 늦는 출발편을 따로 경고 — 기존 시간표 서비스에서는 보이지 않는 위험 |
 
 ## 실행 방법
@@ -75,7 +76,7 @@ nvm use            # Node 22
 npm install
 npm run dev        # http://localhost:3000
 
-npm test           # Vitest (90 tests)
+npm test           # Vitest (98 tests)
 npm run typecheck  # next typegen + tsc
 npm run lint
 npm run build
@@ -152,7 +153,7 @@ UI (Next.js App Router)
 
 ## 현재 한계
 
-- 🟡 **예측값은 실제 교통 데이터가 아닌 가정 규칙 결과**입니다. 실제 이동시간과 다를 수 있습니다.
+- 🟡 **예측값은 실제 교통 데이터가 아닌 가정 규칙 결과**입니다. 첫 검증(추석 연휴 오후, 8편)에서는 시간표보다 크게 틀렸습니다 ([`docs/validation.md`](docs/validation.md)).
 - 시간표는 실제 TAGO 데이터지만, API가 **어제~모레 정도만** 제공합니다. 그 이후 날짜는 가까운 날의 시간표를 참고로 보여주며 화면에 명시합니다.
 - 노선은 청주 기준 9개만 제공합니다. 수원→청주는 TAGO에 데이터가 없어 편도만 있습니다.
 - 휴게소 정차, 사고·기상, 명절 특수 교통량은 반영하지 않습니다.
@@ -176,11 +177,13 @@ feat: add target-arrival planner that compares departures against an arrive-by t
 feat: add arrive-by search mode and departure plan screen
 fix: add Labor Day and Constitution Day to the 2026 holiday list
 feat: connect real timetables from TAGO and holidays from the KASI API
+feat: show today's real trips on the route from TAGO express arrival info
 ```
 
 ## Troubleshooting
 
 발표용 주요 사례 ([`docs/troubleshooting.md`](docs/troubleshooting.md)):
+- **첫 실측 검증에서 BUSTA 가정 규칙이 시간표보다 크게 틀렸다** — 추석 연휴 오후 실제 8편: 시간표 오차 약 3분, 가정 규칙 약 23분. 규칙을 8건에 맞춰 고치지 않고 실제 기록을 수집하는 구조로 전환 ([`docs/validation.md`](docs/validation.md))
 - **AI가 만든 공휴일 목록에 노동절·제헌절이 빠져 있었다** — 실제 API와 자동 대조해서 발견
 - **조사 문서의 추정 ≠ 실제 API 응답** — 24:00 출발편, 14자리 시각, 조회 가능 기간. 추정으로 파서를 먼저 만들지 않고 실제 응답부터 받은 덕분에 모두 테스트로 고정
 - **curl은 되는데 서버에서는 403** — Node fetch가 프록시 변수를 읽지 않는 환경 문제
@@ -215,3 +218,4 @@ feat: connect real timetables from TAGO and holidays from the KASI API
 | [`docs/prompt-log.md`](docs/prompt-log.md) | 프롬프트 개선 기록 |
 | [`docs/troubleshooting.md`](docs/troubleshooting.md) | 문제 해결 기록 |
 | [`docs/roadmap.md`](docs/roadmap.md) | 단계별 계획 |
+| [`docs/validation.md`](docs/validation.md) | 예측 vs 실제 운행 검증 기록 |
