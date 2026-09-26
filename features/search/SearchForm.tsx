@@ -11,8 +11,10 @@ export interface SearchFormProps {
   schedules: BusSchedule[];
   today: string;
   nowMinutes: number;
-  initial?: { from?: string; to?: string; date?: string; time?: string };
+  initial?: { from?: string; to?: string; date?: string; time?: string; arriveBy?: string };
 }
+
+type Mode = "depart" | "arrive";
 
 const fieldClass =
   "w-full appearance-none rounded-xl border border-border bg-surface px-3 py-3 text-base font-semibold text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft";
@@ -51,8 +53,36 @@ export function SearchForm({ terminals, routes, schedules, today, nowMinutes, in
 
   const reversible = routes.some((r) => r.originId === to && r.destinationId === from);
 
+  const [mode, setMode] = useState<Mode>(initial?.arriveBy ? "arrive" : "depart");
+  const [arriveBy, setArriveBy] = useState(
+    initial?.arriveBy && parseClockTime(initial.arriveBy) !== null ? initial.arriveBy : "19:00",
+  );
+  const canSubmit = !!route && (mode === "depart" ? !!time : parseClockTime(arriveBy) !== null);
+
   return (
-    <Form action="/result" className="space-y-4">
+    <Form action={mode === "depart" ? "/result" : "/plan"} className="space-y-4">
+      <div role="tablist" aria-label="검색 기준" className="grid grid-cols-2 rounded-xl bg-surface-2 p-1 text-sm font-semibold">
+        {(
+          [
+            ["depart", "출발시간으로"],
+            ["arrive", "도착시각으로"],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            role="tab"
+            aria-selected={mode === value}
+            onClick={() => setMode(value)}
+            className={`rounded-lg py-2 transition ${
+              mode === value ? "bg-surface text-ink shadow-sm" : "text-ink-3"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <div className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
         <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
           <label className="block">
@@ -101,34 +131,49 @@ export function SearchForm({ terminals, routes, schedules, today, nowMinutes, in
               className={fieldClass}
             />
           </label>
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-ink-3">출발시간</span>
-            <select
-              name="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              className={fieldClass}
-              disabled={departures.length === 0}
-            >
-              {departures.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </label>
+          {mode === "depart" ? (
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-ink-3">출발시간</span>
+              <select
+                name="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className={fieldClass}
+                disabled={departures.length === 0}
+              >
+                {departures.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-ink-3">이 시각까지 도착</span>
+              <input
+                type="time"
+                name="arriveBy"
+                required
+                step={300}
+                value={arriveBy}
+                onChange={(e) => setArriveBy(e.target.value)}
+                className={fieldClass}
+              />
+            </label>
+          )}
         </div>
-        {departures.length === 0 && (
+        {mode === "depart" && departures.length === 0 && (
           <p className="mt-2 text-sm text-ink-3">선택한 날짜에 운행하는 출발편이 없습니다.</p>
         )}
       </div>
 
       <button
         type="submit"
-        disabled={!route || !time}
+        disabled={!canSubmit}
         className="w-full rounded-2xl bg-accent py-4 text-base font-bold text-white shadow-sm transition active:scale-[0.99] disabled:opacity-40 dark:text-[#0b1020]"
       >
-        예상 도착시간 보기
+        {mode === "depart" ? "예상 도착시간 보기" : "가능한 출발편 비교하기"}
       </button>
     </Form>
   );

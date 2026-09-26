@@ -37,7 +37,7 @@ export default async function Home({ searchParams }: { searchParams: SearchParam
         schedules={allSchedules}
         today={todayInKorea()}
         nowMinutes={nowMinutesInKorea()}
-        initial={{ from: one(params.from), to: one(params.to), date: one(params.date), time: one(params.time) }}
+        initial={{ from: one(params.from), to: one(params.to), date: one(params.date), time: one(params.time), arriveBy: one(params.arriveBy) }}
       />
 
       <p className="mt-6 text-center text-xs leading-relaxed text-ink-3">
