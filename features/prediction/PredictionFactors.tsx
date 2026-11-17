@@ -13,7 +13,10 @@ export function PredictionFactors({ prediction }: { prediction: TravelTimePredic
     <section className="rounded-2xl border border-border bg-surface p-4">
       <h2 className="text-sm font-bold">이렇게 계산했어요</h2>
       <p className="mt-1 text-sm text-ink-2">
-        {dayText} · {prediction.departureTime} 출발 · 운행 구간 동안의 시간대 패턴 평균
+        {dayText} · {prediction.departureTime} 출발 ·{" "}
+        {prediction.source.kind === "historical"
+          ? "같은 조건의 실제 운행 기록"
+          : "운행 구간 동안의 시간대 패턴 평균"}
       </p>
       {prediction.factors.length === 0 ? (
         <p className="mt-3 text-sm text-ink-3">이 시간대에 적용된 정체 요인이 없어 시간표 소요시간과 같습니다.</p>

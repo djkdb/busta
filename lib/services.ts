@@ -6,6 +6,9 @@
  *   BUSTA_SCHEDULE_SOURCE    "tago" | "sample"  (기본: 키가 있으면 tago, 없으면 sample)
  *   BUSTA_HOLIDAY_SOURCE     "kasi" | "static"  (기본: 키가 있으면 kasi, 없으면 static)
  *   BUSTA_PREDICTION_ENGINE  "mock" (현재 유일한 구현)
+ *   BUSTA_OBSERVATIONS_URL   실제 운행 기록(JSONL) 위치. 예) busta-data 브랜치의 raw.githubusercontent.com 주소
+ *   BUSTA_OBSERVATIONS_DIR   같은 기록의 로컬 디렉터리 (URL 보다 우선)
+ *     → 둘 중 하나가 있으면 "실측 우선, 부족하면 가정 규칙(사유 표시)" 으로 예측한다
  *
  * 원칙: 명시적으로 요청한 실제 데이터 소스를 쓸 수 없으면 조용히 샘플로 대체하지 않고 에러를 낸다.
  * 어떤 소스를 쓰든 결과 화면의 "데이터 상태"에 실제 출처가 표시된다.
@@ -13,13 +16,23 @@
 import "server-only";
 import { TAGO_ROUTES, TAGO_TERMINALS } from "@/data/catalog/tago-routes";
 import { StaticHolidayCalendar } from "@/lib/data/holiday-calendar";
+import {
+  HistoricalFirstTravelTimeDataProvider,
+  HistoricalTravelTimeDataProvider,
+} from "@/lib/data/historical-travel-time-provider";
 import { KasiHolidayCalendar } from "@/lib/data/kasi-holiday-calendar";
 import { MockTravelTimeDataProvider } from "@/lib/data/mock-travel-time-provider";
 import { PublicDataClient } from "@/lib/data/public-data/client";
 import { SampleScheduleDataProvider } from "@/lib/data/sample-schedule-provider";
 import { TagoLiveArrivalProvider } from "@/lib/data/tago/tago-live-arrival-provider";
 import { TagoScheduleDataProvider } from "@/lib/data/tago/tago-schedule-provider";
-import type { HolidayCalendar, LiveArrivalProvider, ScheduleDataProvider } from "@/lib/data/types";
+import type {
+  HolidayCalendar,
+  LiveArrivalProvider,
+  ScheduleDataProvider,
+  TravelTimeDataProvider,
+} from "@/lib/data/types";
+import { FileObservationStore, HttpObservationStore, type ObservationStore } from "@/lib/observations/store";
 import { ProviderPredictionEngine } from "@/lib/prediction/engine";
 import type { PredictionEngine } from "@/lib/prediction/types";
 
@@ -74,12 +87,24 @@ export function getServices(): BustaServices {
       ? new KasiHolidayCalendar(new PublicDataClient({ serviceKey: requireKey(holidayKey, "특일정보 API") }))
       : new StaticHolidayCalendar();
 
+  const observationsDir = process.env.BUSTA_OBSERVATIONS_DIR?.trim();
+  const observationsUrl = process.env.BUSTA_OBSERVATIONS_URL?.trim();
+  const store: ObservationStore | null = observationsDir
+    ? new FileObservationStore(observationsDir)
+    : observationsUrl
+      ? new HttpObservationStore(observationsUrl)
+      : null;
+  const mock = new MockTravelTimeDataProvider(holidays);
+  const travelTime: TravelTimeDataProvider = store
+    ? new HistoricalFirstTravelTimeDataProvider(new HistoricalTravelTimeDataProvider(store, holidays), mock)
+    : mock;
+
   cached = {
     schedules,
     live,
-    engine: new ProviderPredictionEngine("mock-pattern", {
+    engine: new ProviderPredictionEngine(store ? "historical-first" : "mock-pattern", {
       schedules,
-      travelTime: new MockTravelTimeDataProvider(holidays),
+      travelTime,
       holidays,
     }),
   };

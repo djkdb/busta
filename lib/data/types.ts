@@ -68,6 +68,8 @@ export interface TravelTimeData {
   source: DataSourceInfo;
   /** Historical 데이터라면 사용된 관측 건수 (Mock 은 undefined) */
   sampleSize?: number;
+  /** 화면에 그대로 보여줄 안내 (예: 실측이 부족해 가정 규칙으로 대체함) */
+  notes?: string[];
 }
 
 export interface TravelTimeDataProvider {

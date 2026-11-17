@@ -125,7 +125,7 @@ export class ProviderPredictionEngine implements PredictionEngine {
 
     const isScheduledDeparture = departure !== null;
 
-    const notes: string[] = [...timetable.notes];
+    const notes: string[] = [...timetable.notes, ...(data.notes ?? [])];
     if (!holidays.covers(input.date)) {
       notes.push("이 날짜는 공휴일 정보가 없어 요일 기준으로만 계산했습니다.");
     }
