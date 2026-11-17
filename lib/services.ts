@@ -6,9 +6,10 @@
  *   BUSTA_SCHEDULE_SOURCE    "tago" | "sample"  (기본: 키가 있으면 tago, 없으면 sample)
  *   BUSTA_HOLIDAY_SOURCE     "kasi" | "static"  (기본: 키가 있으면 kasi, 없으면 static)
  *   BUSTA_PREDICTION_ENGINE  "mock" (현재 유일한 구현)
- *   BUSTA_OBSERVATIONS_URL   실제 운행 기록(JSONL) 위치. 예) busta-data 브랜치의 raw.githubusercontent.com 주소
- *   BUSTA_OBSERVATIONS_DIR   같은 기록의 로컬 디렉터리 (URL 보다 우선)
- *     → 둘 중 하나가 있으면 "실측 우선, 부족하면 가정 규칙(사유 표시)" 으로 예측한다
+ *   BUSTA_DATA_URL   수집기 데이터(busta-data 브랜치) 위치. 예) https://raw.githubusercontent.com/djkdb/busta/busta-data
+ *   BUSTA_DATA_DIR   같은 데이터의 로컬 디렉터리 (URL 보다 우선)
+ *     → observations/ 로 "실측 우선, 부족하면 가정 규칙(사유 표시)" 예측,
+ *       timetables/ 로 공개 전 날짜에 같은 요일의 최근 실제 시간표 참고
  *
  * 원칙: 명시적으로 요청한 실제 데이터 소스를 쓸 수 없으면 조용히 샘플로 대체하지 않고 에러를 낸다.
  * 어떤 소스를 쓰든 결과 화면의 "데이터 상태"에 실제 출처가 표시된다.
@@ -33,6 +34,11 @@ import type {
   TravelTimeDataProvider,
 } from "@/lib/data/types";
 import { FileObservationStore, HttpObservationStore, type ObservationStore } from "@/lib/observations/store";
+import {
+  FileTimetableArchive,
+  HttpTimetableArchive,
+  type TimetableArchive,
+} from "@/lib/observations/timetable-archive";
 import { ProviderPredictionEngine } from "@/lib/prediction/engine";
 import type { PredictionEngine } from "@/lib/prediction/types";
 
@@ -73,12 +79,25 @@ export function getServices(): BustaServices {
   const holidaySource = choose("BUSTA_HOLIDAY_SOURCE", ["kasi", "static"], holidayKey ? "kasi" : "static");
   choose("BUSTA_PREDICTION_ENGINE", ["mock"], "mock");
 
+  const dataDir = process.env.BUSTA_DATA_DIR?.trim();
+  const dataUrl = process.env.BUSTA_DATA_URL?.trim()?.replace(/\/$/, "");
+  const store: ObservationStore | null = dataDir
+    ? new FileObservationStore(`${dataDir}/observations`)
+    : dataUrl
+      ? new HttpObservationStore(`${dataUrl}/observations`)
+      : null;
+  const archive: TimetableArchive | undefined = dataDir
+    ? new FileTimetableArchive(`${dataDir}/timetables`)
+    : dataUrl
+      ? new HttpTimetableArchive(`${dataUrl}/timetables`)
+      : undefined;
+
   const tagoClient =
     scheduleSource === "tago"
       ? new PublicDataClient({ serviceKey: requireKey(scheduleKey, "TAGO 시간표") })
       : null;
   const schedules: ScheduleDataProvider = tagoClient
-    ? new TagoScheduleDataProvider(tagoClient, TAGO_TERMINALS, TAGO_ROUTES)
+    ? new TagoScheduleDataProvider(tagoClient, TAGO_TERMINALS, TAGO_ROUTES, { archive })
     : new SampleScheduleDataProvider();
   const live = tagoClient ? new TagoLiveArrivalProvider(tagoClient, TAGO_ROUTES) : null;
 
@@ -87,13 +106,6 @@ export function getServices(): BustaServices {
       ? new KasiHolidayCalendar(new PublicDataClient({ serviceKey: requireKey(holidayKey, "특일정보 API") }))
       : new StaticHolidayCalendar();
 
-  const observationsDir = process.env.BUSTA_OBSERVATIONS_DIR?.trim();
-  const observationsUrl = process.env.BUSTA_OBSERVATIONS_URL?.trim();
-  const store: ObservationStore | null = observationsDir
-    ? new FileObservationStore(observationsDir)
-    : observationsUrl
-      ? new HttpObservationStore(observationsUrl)
-      : null;
   const mock = new MockTravelTimeDataProvider(holidays);
   const travelTime: TravelTimeDataProvider = store
     ? new HistoricalFirstTravelTimeDataProvider(new HistoricalTravelTimeDataProvider(store, holidays), mock)

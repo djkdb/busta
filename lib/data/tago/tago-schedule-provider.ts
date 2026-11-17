@@ -8,6 +8,7 @@
  */
 import type { TagoRoute } from "@/data/catalog/tago-routes";
 import { extractItems, PublicDataApiError, type PublicDataClient } from "@/lib/data/public-data/client";
+import type { TimetableArchive } from "@/lib/observations/timetable-archive";
 import { addDays, formatDateKo, getDayOfWeek, isValidDate, todayInKorea } from "@/lib/utils/time";
 import type { BusSchedule, DataSourceInfo, ISODate, Route, Terminal } from "@/types/domain";
 import {
@@ -48,6 +49,8 @@ const MAX_PAGES = 5;
 export interface TagoScheduleProviderOptions {
   now?: () => Date;
   cacheTtlMs?: number;
+  /** 수집기가 보관한 실제 시간표. 공개 전 날짜에 같은 요일의 최근 시간표를 참고한다 */
+  archive?: TimetableArchive;
 }
 
 const isWeekendLike = (date: ISODate) => [0, 6].includes(getDayOfWeek(date));
@@ -57,6 +60,7 @@ export class TagoScheduleDataProvider implements ScheduleDataProvider {
   private readonly now: () => Date;
   private readonly cacheTtlMs: number;
   private readonly cache = new Map<string, { expires: number; value: Promise<ParsedDay> }>();
+  private readonly archive?: TimetableArchive;
 
   constructor(
     private readonly client: PublicDataClient,
@@ -66,6 +70,7 @@ export class TagoScheduleDataProvider implements ScheduleDataProvider {
   ) {
     this.now = options.now ?? (() => new Date());
     this.cacheTtlMs = options.cacheTtlMs ?? 30 * 60_000;
+    this.archive = options.archive;
   }
 
   async listTerminals(): Promise<Terminal[]> {
@@ -91,8 +96,24 @@ export class TagoScheduleDataProvider implements ScheduleDataProvider {
       return this.toTimetable(route, date, date, own, source, []);
     }
 
-    // 공개 전(또는 지난) 날짜: 공개된 날 중 주말/평일 성격이 같은 날을 우선 참고
+    // 1순위: 보관된 실제 시간표 중 같은 요일의 가장 최근 것 (수집기가 쌓은 기록)
     const today = todayInKorea(this.now());
+    const archived = this.archive
+      ? await this.archive.findSameWeekday(route.id, date, addDays(today, 1)).catch(() => null)
+      : null;
+    if (archived && getDayOfWeek(archived.date) === getDayOfWeek(date)) {
+      const departures = archived.departures.map((d) => ({
+        departure: { date, time: d.t, minutes: Number(d.t.slice(0, 2)) * 60 + Number(d.t.slice(3)) },
+        durationMinutes: d.m,
+        grade: d.g,
+        charge: null,
+      }));
+      return this.toTimetable(route, date, archived.date, { departures, skipped: 0 }, source, [
+        `${formatDateKo(date)} 시간표는 아직 공개되지 않아, 보관해 둔 같은 요일의 실제 시간표(${formatDateKo(archived.date)})를 참고해 보여드려요. 실제 배차와 다를 수 있습니다.`,
+      ]);
+    }
+
+    // 2순위: 공개된 날 중 주말/평일 성격이 같은 날을 참고
     const candidates = [today, addDays(today, 1)].sort(
       (a, b) => Number(isWeekendLike(b) === isWeekendLike(date)) - Number(isWeekendLike(a) === isWeekendLike(date)),
     );

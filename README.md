@@ -94,7 +94,7 @@ npm run build
 | `BUSTA_SCHEDULE_SOURCE` | `tago` / `sample` (기본: 키 있으면 tago) |
 | `BUSTA_HOLIDAY_SOURCE` | `kasi` / `static` (기본: 키 있으면 kasi) |
 
-| `BUSTA_OBSERVATIONS_URL` | 실제 운행 기록 위치 (예: `https://raw.githubusercontent.com/djkdb/busta/busta-data/observations`). 설정하면 실측 우선 예측 |
+| `BUSTA_DATA_URL` | 수집기 데이터 위치 (예: `https://raw.githubusercontent.com/djkdb/busta/busta-data`). 설정하면 실측 우선 예측 + 먼 날짜에 같은 요일의 보관 시간표 사용 |
 
 명시적으로 `tago`를 지정했는데 키가 없으면 샘플로 조용히 대체하지 않고 에러를 냅니다.
 프록시를 거쳐야 하는 개발 환경에서는 `NODE_USE_ENV_PROXY=1 npm run dev` (Node 내장 fetch가 `HTTPS_PROXY`를 읽도록).

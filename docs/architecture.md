@@ -126,7 +126,8 @@ GitHub Actions (20분마다)                    앱 (요청마다, 10분 캐시)
        └ 도착완료 편 → ObservationRecord           │   └ ObservationStore (URL 또는 디렉터리)
    └ busta-data 브랜치                           │       └ observations/YYYY-MM.jsonl
        ├ observations/YYYY-MM.jsonl  ──────────▶│   같은 노선·요일 유형·±60분, 5건↑ → 중앙값 🟢
-       └ timetables/YYYY-MM-DD/*.json            └ 부족/실패 → MockTravelTimeDataProvider 🟡 + 사유 note
+       └ timetables/YYYY-MM-DD/*.json ─────────▶ TagoScheduleDataProvider: 공개 전 날짜 → 같은 요일 최근 시간표
+                                                 └ 부족/실패 → MockTravelTimeDataProvider 🟡 + 사유 note
 ```
 - 데이터는 main이 아니라 `busta-data` 브랜치에 쌓는다: main의 커밋 히스토리를 개발 과정 기록으로 유지하기 위해
 - 기록은 지우지 않고, 품질이 의심되는 기록(`arrivalAtFeedTime`)은 표시만 해서 계산에서 제외

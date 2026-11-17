@@ -20,7 +20,7 @@ Mock Data ──▶ Real Timetable ──▶ Traffic Data ──▶ Historical D
 ## 🔶 Phase 3 — 실제 데이터 연결 (진행 중)
 1. ✅ **TAGO 고속/시외버스정보 → `TagoScheduleDataProvider`** (실제 응답 확인 후 구현, 노선 9개)
    - ✅ 매일 시간표 보관 (수집기 `--timetables`, 04:30 KST)
-   - 남은 과제: 보관한 시간표로 먼 날짜를 "같은 요일의 최근 실제 시간표"로 보여주기
+   - ✅ 공개 전 날짜는 보관된 시간표 중 **같은 요일의 최근 것**을 참고 (없으면 오늘/내일 시간표)
 2. ✅ **특일정보 API → `KasiHolidayCalendar`**
 3. ⏭ **교통 데이터 → `TrafficApiTravelTimeDataProvider`**
    - 카카오 미래 운행 정보 / TMAP 타임머신 중 무료량·약관 확인 후 선택

@@ -14,6 +14,7 @@ import { parseTagoDateTime, parseTagoSchedules, type TagoScheduleItem } from "@/
 import { TagoScheduleDataProvider } from "@/lib/data/tago/tago-schedule-provider";
 import { parseArrivalSnapshot, type TagoArrivalItem } from "@/lib/data/tago/arrival";
 import { TagoLiveArrivalProvider, toArrivalTerminalCode } from "@/lib/data/tago/tago-live-arrival-provider";
+import { HttpTimetableArchive, sameWeekdayCandidates } from "@/lib/observations/timetable-archive";
 import { ScheduleUnavailableError } from "@/lib/data/types";
 import { ProviderPredictionEngine } from "@/lib/prediction/engine";
 
@@ -396,5 +397,38 @@ describe("TagoLiveArrivalProvider", () => {
     const error = (await client.getJson("/x", {}).catch((e: unknown) => e)) as PublicDataApiError;
     expect(error.kind).toBe("api");
     expect(error.message).toContain("99");
+  });
+});
+
+describe("timetable archive (same weekday reference)", () => {
+  it("walks back to the latest published day with the same weekday", () => {
+    // 오늘 9/26(토), 공개된 마지막 날 9/27(일). 10/9(금) → 같은 금요일 9/25, 9/18, …
+    expect(sameWeekdayCandidates("2026-10-09", "2026-09-27", 3)).toEqual(["2026-09-25", "2026-09-18", "2026-09-11"]);
+    // 지난 날짜는 바로 1주 전부터
+    expect(sameWeekdayCandidates("2026-09-10", "2026-09-27", 2)).toEqual(["2026-09-03", "2026-08-27"]);
+  });
+
+  it("uses an archived same-weekday timetable for unpublished dates, and says so", async () => {
+    const reads: string[] = [];
+    const archive = new HttpTimetableArchive("https://example.test/timetables", async (url) => {
+      reads.push(url);
+      return url.endsWith("/2026-09-18/cheongju-express__seoul-gyeongbu.json")
+        ? new Response(JSON.stringify({ routeId: "cheongju-express__seoul-gyeongbu", date: "2026-09-18", departures: [{ t: "17:00", m: 95, g: "우등" }] }))
+        : new Response("", { status: 404 });
+    });
+    const client = new PublicDataClient({ serviceKey: SECRET, fetch: fakeFetch({ "NAEK400>NAEK010@20260926": EXPRESS_CJ_SEOUL }), sleep: async () => {} });
+    const p = new TagoScheduleDataProvider(client, TAGO_TERMINALS, TAGO_ROUTES, { now: NOW, archive });
+    const tt = await p.getTimetable("cheongju-express__seoul-gyeongbu", "2026-10-09");
+    expect(reads[0]).toContain("/2026-09-25/");
+    expect(tt.referenceDate).toBe("2026-09-18");
+    expect(tt.departures).toEqual([expect.objectContaining({ departureTime: "17:00", scheduledDurationMinutes: 95, grade: "우등" })]);
+    expect(tt.notes.join()).toContain("같은 요일의 실제 시간표(9월 18일 (금))");
+  });
+
+  it("falls back to today's timetable when nothing is archived", async () => {
+    const archive = new HttpTimetableArchive("https://example.test/t", async () => new Response("", { status: 404 }));
+    const client = new PublicDataClient({ serviceKey: SECRET, fetch: fakeFetch({ "NAEK400>NAEK010@20260926": EXPRESS_CJ_SEOUL }), sleep: async () => {} });
+    const p = new TagoScheduleDataProvider(client, TAGO_TERMINALS, TAGO_ROUTES, { now: NOW, archive });
+    expect((await p.getTimetable("cheongju-express__seoul-gyeongbu", "2026-10-09")).referenceDate).toBe("2026-09-26");
   });
 });
