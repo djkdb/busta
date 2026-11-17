@@ -10,3 +10,4 @@
 - Commit messages: conventional (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`), one feature per commit.
 - External APIs: fetch a real response first, save it (without keys) under `tests/fixtures/`, write parser tests, then implement. Never commit `.env.local` or print service keys.
 - In this cloud dev container, run the server with `NODE_USE_ENV_PROXY=1` so Node's fetch uses `HTTPS_PROXY` (not needed in normal deployments).
+- Real arrival data: `npx tsx scripts/collect.ts --out <dir>` (GitHub Actions runs it into the `busta-data` branch). Never delete collected records; flag questionable ones instead.

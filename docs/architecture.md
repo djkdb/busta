@@ -118,7 +118,20 @@ Mock 단계의 `listSchedules(routeId)`(요일별 고정 시간표)는 실제 �
 - API가 아직 공개하지 않은 날짜는 `referenceDate`가 다른 "참고 시간표"를 돌려주고 notes에 이유를 적는다 → 화면에 그대로 노출
 - 검색 폼은 `/api/timetable`로 노선·날짜별 시간표를 받는다 (키는 서버에만)
 
-### 7. 검색은 GET URL
+### 7. 실제 운행 기록 파이프라인 (Phase 4)
+```
+GitHub Actions (20분마다)                    앱 (요청마다, 10분 캐시)
+  scripts/collect.ts                           HistoricalFirstTravelTimeDataProvider
+   └ TagoLiveArrivalProvider                     ├ HistoricalTravelTimeDataProvider
+       └ 도착완료 편 → ObservationRecord           │   └ ObservationStore (URL 또는 디렉터리)
+   └ busta-data 브랜치                           │       └ observations/YYYY-MM.jsonl
+       ├ observations/YYYY-MM.jsonl  ──────────▶│   같은 노선·요일 유형·±60분, 5건↑ → 중앙값 🟢
+       └ timetables/YYYY-MM-DD/*.json            └ 부족/실패 → MockTravelTimeDataProvider 🟡 + 사유 note
+```
+- 데이터는 main이 아니라 `busta-data` 브랜치에 쌓는다: main의 커밋 히스토리를 개발 과정 기록으로 유지하기 위해
+- 기록은 지우지 않고, 품질이 의심되는 기록(`arrivalAtFeedTime`)은 표시만 해서 계산에서 제외
+
+### 8. 검색은 GET URL
 `/result?from=cheongju&to=seoul-gyeongbu&date=2026-10-02&time=17:00` — 결과를 공유·북마크할 수 있고, 서버 컴포넌트에서 계산하므로 향후 API 키가 브라우저에 노출되지 않는다.
 
 ## 엔진 교체 시나리오

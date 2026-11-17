@@ -66,6 +66,8 @@ BUSTA · 서울(경부) → 청주 · 10월 2일 (금) · 19:00까지 도착
 | **출발편 비교** | ✅ | 앞뒤 시간표 출발편의 예상 소요·도착 비교. Mock 단계에서는 "최적"이라 단정하지 않음 |
 | 자정 넘김 / 공휴일 / 요일별 운행 | ✅ | 23:00 출발 → 다음날 도착 `+1일`, 한글날 등 공휴일 반영, 금·일 심야편 |
 | **목표 도착시각 역산** | ✅ | "19시까지 도착하려면?" → 예상 기준 늦지 않는 마지막 출발편, 여유 적을 때 대안, 출발편별 도착 가능/여유 적음/늦을 수 있음 |
+| **실측 우선 예측** | ✅ | 수집된 실제 도착 기록이 같은 조건(노선·요일 유형·±1시간)에서 5건 이상이면 그 중앙값으로 예측(🟢). 부족하면 가정 규칙(🟡)을 쓰고 **몇 건이라 부족했는지** 표시 |
+| **실제 운행 기록 수집기** | ✅ | GitHub Actions가 20분마다 실제 도착 기록을, 매일 실제 시간표를 `busta-data` 브랜치에 쌓음 |
 | **오늘의 실제 운행** | ✅ | 오늘 날짜 조회 시 이 노선의 최근 도착 완료 편(실제 소요시간)과 운행 중 편(위치·도착 예정)을 🟢 실제 데이터로 표시. 원본이 실시간이 아니므로 기준 시각을 함께 표시 |
 | **시간표 함정 탐지** | ✅ | 시간표상으로는 제시간이지만 예상으로는 늦는 출발편을 따로 경고 — 기존 시간표 서비스에서는 보이지 않는 위험 |
 
@@ -76,7 +78,8 @@ nvm use            # Node 22
 npm install
 npm run dev        # http://localhost:3000
 
-npm test           # Vitest (98 tests)
+npm test           # Vitest (111 tests)
+npx tsx scripts/collect.ts --out ./store --timetables   # 실제 도착 기록·시간표 수집 (키 필요)
 npm run typecheck  # next typegen + tsc
 npm run lint
 npm run build
@@ -90,6 +93,8 @@ npm run build
 | `DATA_GO_KR_SERVICE_KEY` | 공공데이터포털 일반 인증키(Decoding). TAGO 고속버스정보·시외버스정보, 특일정보 활용신청 필요 |
 | `BUSTA_SCHEDULE_SOURCE` | `tago` / `sample` (기본: 키 있으면 tago) |
 | `BUSTA_HOLIDAY_SOURCE` | `kasi` / `static` (기본: 키 있으면 kasi) |
+
+| `BUSTA_OBSERVATIONS_URL` | 실제 운행 기록 위치 (예: `https://raw.githubusercontent.com/djkdb/busta/busta-data/observations`). 설정하면 실측 우선 예측 |
 
 명시적으로 `tago`를 지정했는데 키가 없으면 샘플로 조용히 대체하지 않고 에러를 냅니다.
 프록시를 거쳐야 하는 개발 환경에서는 `NODE_USE_ENV_PROXY=1 npm run dev` (Node 내장 fetch가 `HTTPS_PROXY`를 읽도록).
@@ -130,7 +135,7 @@ UI (Next.js App Router)
 | | **현재** | **목표** |
 |---|---|---|
 | 시간표 | 🟢 **TAGO 실제 배차** — 6개 터미널·9개 노선, 출발편별 소요시간·등급 (공개 전 날짜는 "참고 시간표"로 명시) | 매일 수집해 날짜별 이력으로 보관 |
-| 소요시간 | 🟡 요일·시간대·방향별 **가정 규칙** (예: 평일 퇴근 수도권 출발 +25%) | 도로 예측 API + 실제 운행 이력 |
+| 소요시간 | 🟢 **실제 운행 기록 중앙값** (기록이 충분한 조건) / 🟡 **가정 규칙** (그 외, 사유 표시) | 기록이 쌓일수록 🟢 비율 증가 + 도로 예측 API |
 | 공휴일 | 🟢 **특일정보 API** (키 없으면 2026 정적 목록) | - |
 | 정확도 | **측정 불가 — 표시하지 않음** | 실제 운행 기록 대비 오차(MAE) 측정 후 공개 |
 | UI 표시 | 🟡 시연용 예측 데이터 | 🟢 실제 출처 명시 |
@@ -178,6 +183,8 @@ feat: add arrive-by search mode and departure plan screen
 fix: add Labor Day and Constitution Day to the 2026 holiday list
 feat: connect real timetables from TAGO and holidays from the KASI API
 feat: show today's real trips on the route from TAGO express arrival info
+feat: add a collector that archives real arrivals and timetables
+feat: predict from real arrival history when there are enough samples
 ```
 
 ## Troubleshooting
