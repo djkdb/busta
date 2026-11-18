@@ -17,7 +17,7 @@
 ```
 문제 정의 ──── 사람: 실제 겪은 불편 (금요일 청주→서울 도착시간)
    ↓
-요구사항 정리 ── 사람: 마스터 프롬프트 작성 (제품 철학·금지 방향·심사 기준 포함)
+요구사항 정리 ── 사람: 마스터 프롬프트 작성 (제품 철학·금지 방향 포함)
    ↓
 Repository 분석 ─ AI: 빈 저장소 확인 → 스택 결정 (Next.js 16 + TS + Tailwind + Vitest)
    ↓
@@ -55,7 +55,7 @@ Architecture ─── AI 제안: Provider/Engine 분리, direction 필드, fact
 | 품질 | ESLint (`npm run lint`), `npm run typecheck` (Next typegen + tsc) |
 | AI 가이드 파일 | `AGENTS.md` / `CLAUDE.md` — Next.js 16이 생성한 "학습 데이터와 다른 버전이니 번들 문서를 먼저 읽어라" 규칙. 실제로 AI가 `node_modules/next/dist/docs`에서 `searchParams`가 Promise인지 확인한 뒤 구현함 |
 
-## 중간 발표용 요약 (AI 활용 계획 40%)
+## 요약
 
 - **도구 선정 이유**: 코드·터미널·브라우저를 모두 다룰 수 있는 에이전트형 AI(Claude Code)를 택해, "코드 생성"이 아니라 "설계–구현–검증–기록" 전 과정에 투입
 - **병렬화**: 데이터 조사처럼 독립적인 작업은 서브에이전트에 맡기고 메인은 구현을 진행

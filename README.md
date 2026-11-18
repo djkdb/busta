@@ -4,7 +4,7 @@
 >
 > BUSTA는 시외버스 시간표의 **고정 소요시간** 대신, 출발 **날짜·요일·시간대·교통 패턴**을 반영한 **예상 실제 소요시간과 예상 도착시간**을 보여주는 서비스입니다.
 >
-> CUVIC 바이브 코딩 대회 개인전 출품작 · 가칭 서비스명
+> 개인 프로젝트 · 가칭 서비스명
 
 > [!WARNING]
 > **현재 버전은 프로토타입입니다.**
@@ -189,7 +189,7 @@ feat: predict from real arrival history when there are enough samples
 
 ## Troubleshooting
 
-발표용 주요 사례 ([`docs/troubleshooting.md`](docs/troubleshooting.md)):
+주요 사례 ([`docs/troubleshooting.md`](docs/troubleshooting.md)):
 - **첫 실측 검증에서 BUSTA 가정 규칙이 시간표보다 크게 틀렸다** — 추석 연휴 오후 실제 8편: 시간표 오차 약 3분, 가정 규칙 약 23분. 규칙을 8건에 맞춰 고치지 않고 실제 기록을 수집하는 구조로 전환 ([`docs/validation.md`](docs/validation.md))
 - **AI가 만든 공휴일 목록에 노동절·제헌절이 빠져 있었다** — 실제 API와 자동 대조해서 발견
 - **조사 문서의 추정 ≠ 실제 API 응답** — 24:00 출발편, 14자리 시각, 조회 가능 기간. 추정으로 파서를 먼저 만들지 않고 실제 응답부터 받은 덕분에 모두 테스트로 고정
